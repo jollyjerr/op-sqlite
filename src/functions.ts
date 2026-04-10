@@ -122,23 +122,9 @@ function enhanceDB(db: _InternalDB, options: DBParams): DB {
 
 			async function run() {
 				try {
-					enhancedDb.executeSync("BEGIN TRANSACTION;");
-
 					const res = await db.executeBatch(commands as any[]);
-
-					enhancedDb.executeSync("COMMIT;");
-
 					await db.flushPendingReactiveQueries();
-
 					return res;
-				} catch (executionError) {
-					try {
-						enhancedDb.executeSync("ROLLBACK;");
-					} catch (rollbackError) {
-						throw rollbackError;
-					}
-
-					throw executionError;
 				} finally {
 					lock.inProgress = false;
 					startNextTransaction();

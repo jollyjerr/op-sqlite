@@ -872,13 +872,18 @@ BatchResult opsqlite_execute_batch(sqlite3 *db,
   }
 
   int affected_rows = 0;
-
+  opsqlite_execute(db, "BEGIN EXCLUSIVE TRANSACTION", nullptr);
   for (size_t i = 0; i < command_count; i++) {
     const auto &command = commands->at(i);
-    auto result = opsqlite_execute(db, command.sql, &command.params);
-    affected_rows += result.affectedRows;
+    try {
+      auto result = opsqlite_execute(db, command.sql, &command.params);
+      affected_rows += result.affectedRows;
+    } catch (std::exception &exc) {
+      opsqlite_execute(db, "ROLLBACK", nullptr);
+      throw;
+    }
   }
-
+  opsqlite_execute(db, "COMMIT", nullptr);
   return BatchResult{.affectedRows = affected_rows,
                      .commands = static_cast<int>(command_count)};
 }
