@@ -754,7 +754,11 @@ opsqlite_libsql_execute_batch(DB const &db,
                 opsqlite_libsql_execute(db, command.sql, &command.params);
             affectedRows += result.affectedRows;
         } catch (std::exception &exc) {
-            opsqlite_libsql_execute(db, "ROLLBACK", nullptr);
+            try {
+                opsqlite_libsql_execute(db, "ROLLBACK", nullptr);
+            } catch (...) {
+                // Swallow rollback errors so the original error propagates
+            }
             throw;
         }
     }

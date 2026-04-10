@@ -879,7 +879,11 @@ BatchResult opsqlite_execute_batch(sqlite3 *db,
       auto result = opsqlite_execute(db, command.sql, &command.params);
       affected_rows += result.affectedRows;
     } catch (std::exception &exc) {
-      opsqlite_execute(db, "ROLLBACK", nullptr);
+      try {
+        opsqlite_execute(db, "ROLLBACK", nullptr);
+      } catch (...) {
+        // Swallow rollback errors so the original error propagates
+      }
       throw;
     }
   }

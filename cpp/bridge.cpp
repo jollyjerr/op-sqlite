@@ -464,8 +464,10 @@ BridgeResult opsqlite_execute(sqlite3 *db, std::string const &query,
 
   if (has_failed) {
     const char *message = sqlite3_errmsg(db);
+    int extendedCode = sqlite3_extended_errcode(db);
     throw std::runtime_error("[op-sqlite] statement execution error: " +
-                             std::string(message));
+                             std::string(message) +
+                             " (extended code: " + std::to_string(extendedCode) + ")");
   }
 
   int changedRowCount = sqlite3_changes(db);
@@ -869,8 +871,14 @@ opsqlite_execute_batch(sqlite3 *db,
       auto result = opsqlite_execute(db, command.sql, &command.params);
       affectedRows += result.affectedRows;
     } catch (std::exception &exc) {
-      opsqlite_execute(db, "ROLLBACK", nullptr);
-      throw;
+      try {
+        opsqlite_execute(db, "ROLLBACK", nullptr);
+      } catch (...) {
+        // Swallow rollback errors so the original error propagates
+      }
+      throw std::runtime_error(std::string(exc.what()) +
+                               " [batch index " + std::to_string(i) +
+                               ", SQL: " + command.sql + "]");
     }
   }
   opsqlite_execute(db, "COMMIT", nullptr);
